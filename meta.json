@@ -10,5 +10,6 @@
       "model": "pulltorefresh:winchmotor:winchmotor"
     }
   ],
-  "entrypoint": "bin/winchmotor"
+  "entrypoint": "bin/custommotor"
 }
+
