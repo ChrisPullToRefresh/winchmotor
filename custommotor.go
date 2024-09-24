@@ -7,7 +7,10 @@ import (
 	"context"
 	"errors"
 
+	"fmt"
+
 	// TODO: update to the interface you'll implement
+	"go.viam.com/rdk/components/board"
 	"go.viam.com/rdk/components/motor"
 	"go.viam.com/rdk/logging"
 	"go.viam.com/rdk/resource"
@@ -37,6 +40,7 @@ func init() {
 type Config struct {
 	ArgumentOne int    `json:"one"`
 	ArgumentTwo string `json:"two"`
+	Board       string `json:"board"`
 }
 
 // Validate validates the config and returns implicit dependencies.
@@ -48,6 +52,10 @@ func (cfg *Config) Validate(path string) ([]string, error) {
 
 	if cfg.ArgumentTwo == "" {
 		return nil, utils.NewConfigValidationFieldRequiredError(path, "two")
+	}
+
+	if cfg.Board == "" {
+		return nil, utils.NewConfigValidationFieldRequiredError(path, "board")
 	}
 
 	// TODO: return implicit dependencies if needed as the first value
@@ -99,6 +107,8 @@ type customMotor struct {
 
 	argumentOne int
 	argumentTwo string
+
+	b board.Board
 }
 
 // GoTo implements motor.Motor.
@@ -168,9 +178,15 @@ func (m *customMotor) Reconfigure(ctx context.Context, deps resource.Dependencie
 
 	m.argumentOne = motorConfig.ArgumentOne
 	m.argumentTwo = motorConfig.ArgumentTwo
+
 	m.name = conf.ResourceName()
 	m.logger.Info("one is now configured to: ", m.argumentOne)
 	m.logger.Info("two is now configured to ", m.argumentTwo)
+
+	m.b, err = board.FromDependencies(deps, motorConfig.Board)
+	if err != nil {
+		return fmt.Errorf("unable to get motor %v for %v", motorConfig.Board, m.name)
+	}
 
 	return nil
 }

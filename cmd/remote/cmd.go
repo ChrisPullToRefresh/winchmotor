@@ -47,12 +47,14 @@ func mainWithArgs(ctx context.Context, args []string, logger logging.Logger) (er
 				API:   motor.API,
 				Model: winchmotor.Model,
 				Attributes: rdkutils.AttributeMap{
-					"one": arg_2_converted,
-					"two": os.Args[3],
+					"one":   arg_2_converted,
+					"two":   os.Args[3],
+					"board": os.Args[4],
 				},
 				ConvertedAttributes: &winchmotor.Config{
 					ArgumentOne: arg_2_converted,
 					ArgumentTwo: os.Args[3],
+					Board:       os.Args[4],
 				},
 			},
 		},

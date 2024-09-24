@@ -1,4 +1,5 @@
 {
   "one": 1,
   "two": "two"
+  "board": "board-1"
 }
