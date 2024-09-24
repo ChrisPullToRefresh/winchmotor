@@ -1,0 +1,14 @@
+{
+  "$schema": "https://dl.viam.dev/module.schema.json",
+  "module_id": "pulltorefresh:winchmotor",
+  "visibility": "private",
+  "url": "https://github.com/ChrisPullToRefresh/winchmotor",
+  "description": "A custom winch motor that stops when the load cell reading is too high to prevent the net from snapping",
+  "models": [
+    {
+      "api": "rdk:component:motor",
+      "model": "pulltorefresh:winchmotor:winchmotor"
+    }
+  ],
+  "entrypoint": "bin/winchmotor"
+}
