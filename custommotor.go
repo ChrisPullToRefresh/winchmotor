@@ -233,17 +233,17 @@ func iotaEqual(x, y float64) bool {
 }
 
 // SetPower implements motor.Motor.
-// powerPct > 0 == raise == ccw
+// powerPct > 0 == raise == cw
 func (m *customMotor) SetPower(ctx context.Context, powerPct float64, extra map[string]interface{}) error {
 	if iotaEqual(powerPct, 0.0) {
-		return fmt.Errorf("don't use SetPower to stop the winch")
+		return m.Stop(ctx, nil)
 	}
 	var pin string
 	if powerPct > 0 {
-		pin = winchCcwPin
+		pin = winchCwPin
 		m.ws = raiseWinchState
 	} else {
-		pin = winchCwPin
+		pin = winchCcwPin
 		m.ws = lowerWinchState
 	}
 	newPowerPct := math.Abs(powerPct)
