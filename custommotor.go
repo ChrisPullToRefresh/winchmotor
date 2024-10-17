@@ -6,8 +6,8 @@ package custummotor
 import (
 	"context"
 	"errors"
-
 	"fmt"
+	"math"
 
 	// TODO: update to the interface you'll implement
 	"go.viam.com/rdk/components/board"
@@ -24,6 +24,23 @@ import (
 var (
 	Model            = resource.NewModel("pulltorefresh", "winchmotor", "winchmotor")
 	errUnimplemented = errors.New("unimplemented")
+)
+
+const (
+	winchCwPin            = "35"
+	winchCcwPin           = "37"
+	winchPwmFrequency     = 500
+	winchStopPwmDutyCycle = 0
+	winchSlowPwmDutyCycle = 0.2
+	winchFastPwmDutyCycle = 1.0
+)
+
+type winchState string
+
+const (
+	raiseWinchState   = "raisingWinch"
+	stoppedWinchState = "stoppedWinch"
+	lowerWinchState   = "loweringWinch"
 )
 
 func init() {
@@ -92,6 +109,9 @@ func newCustomMotor(ctx context.Context, deps resource.Dependencies, rawConf res
 		return nil, err
 	}
 
+	m.resetWinch()
+	m.ws = stoppedWinchState
+
 	return m, nil
 }
 
@@ -108,7 +128,8 @@ type customMotor struct {
 	argumentOne int
 	argumentTwo string
 
-	b board.Board
+	b  board.Board
+	ws winchState
 }
 
 // GoTo implements motor.Motor.
@@ -146,9 +167,81 @@ func (m *customMotor) ResetZeroPosition(ctx context.Context, offset float64, ext
 	panic("unimplemented")
 }
 
+func (m *customMotor) setPin(pinName string, high bool) {
+	pin, err := m.b.GPIOPinByName(pinName)
+	if err != nil {
+		m.logger.Error(err)
+		return
+	}
+	err = pin.Set(context.Background(), high, nil)
+	if err != nil {
+		m.logger.Error(err)
+		return
+	}
+}
+
+func (m *customMotor) setPwmFrequency(pinName string, freqHz uint) {
+	pin, err := m.b.GPIOPinByName(pinName)
+	if err != nil {
+		m.logger.Error(err)
+		return
+	}
+	err = pin.SetPWMFreq(m.cancelCtx, freqHz, nil)
+	if err != nil {
+		m.logger.Error(err)
+		return
+	}
+}
+
+func (m *customMotor) setPwmDutyCycle(pinName string, dutyCyclePct float64) {
+	pin, err := m.b.GPIOPinByName(pinName)
+	if err != nil {
+		m.logger.Error(err)
+		return
+	}
+	err = pin.SetPWM(m.cancelCtx, dutyCyclePct, nil)
+	if err != nil {
+		m.logger.Error(err)
+		return
+	}
+}
+
+func (m *customMotor) resetWinch() {
+	m.setPin(winchCwPin, false)
+	m.setPin(winchCcwPin, false)
+
+	m.setPwmFrequency(winchCwPin, winchPwmFrequency)
+	m.setPwmFrequency(winchCcwPin, winchPwmFrequency)
+}
+
+func (m *customMotor) stopWinch() {
+	m.setPwmDutyCycle(winchCwPin, winchStopPwmDutyCycle)
+	m.setPwmDutyCycle(winchCcwPin, winchStopPwmDutyCycle)
+
+	m.ws = stoppedWinchState
+}
+
+func iotaEqual(x, y float64) bool {
+	iota := 0.001
+	return math.Abs(x-y) <= iota
+}
+
 // SetPower implements motor.Motor.
+// powerPct > 0 == raise == ccw
 func (m *customMotor) SetPower(ctx context.Context, powerPct float64, extra map[string]interface{}) error {
-	panic("unimplemented")
+	if iotaEqual(powerPct, 0.0) {
+		return fmt.Errorf("don't use SetPower to stop the winch")
+	}
+	var pin string
+	if powerPct > 0 {
+		pin = winchCcwPin
+		m.ws = raiseWinchState
+	} else {
+		pin = winchCwPin
+		m.ws = lowerWinchState
+	}
+	m.setPwmDutyCycle(pin, math.Abs(powerPct))
+	return nil
 }
 
 // SetRPM implements motor.Motor.
@@ -158,7 +251,8 @@ func (m *customMotor) SetRPM(ctx context.Context, rpm float64, extra map[string]
 
 // Stop implements motor.Motor.
 func (m *customMotor) Stop(context.Context, map[string]interface{}) error {
-	panic("unimplemented")
+	m.stopWinch()
+	return nil
 }
 
 // TODO: rename as needed (i.e., m customMotor)
