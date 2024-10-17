@@ -140,7 +140,7 @@ func (m *customMotor) GoTo(ctx context.Context, rpm float64, positionRevolutions
 
 // GoFor implements motor.Motor.
 func (m *customMotor) GoFor(ctx context.Context, rpm float64, revolutions float64, extra map[string]interface{}) error {
-	panic("unimplemented")
+	return fmt.Errorf("GoFor not yet implemented")
 }
 
 // IsMoving implements motor.Motor.
@@ -160,17 +160,17 @@ func (m *customMotor) IsPowered(ctx context.Context, extra map[string]interface{
 
 // Position implements motor.Motor.
 func (m *customMotor) Position(ctx context.Context, extra map[string]interface{}) (float64, error) {
-	panic("unimplemented")
+	return 0.0, fmt.Errorf("Position not yet implemented")
 }
 
 // Properties implements motor.Motor.
 func (m *customMotor) Properties(ctx context.Context, extra map[string]interface{}) (motor.Properties, error) {
-	panic("unimplemented")
+	return motor.Properties{}, fmt.Errorf("ResetZeroPosition not yet implemented")
 }
 
 // ResetZeroPosition implements motor.Motor.
 func (m *customMotor) ResetZeroPosition(ctx context.Context, offset float64, extra map[string]interface{}) error {
-	panic("unimplemented")
+	return fmt.Errorf("ResetZeroPosition not yet implemented")
 }
 
 func (m *customMotor) setPin(pinName string, high bool) {
@@ -254,7 +254,7 @@ func (m *customMotor) SetPower(ctx context.Context, powerPct float64, extra map[
 
 // SetRPM implements motor.Motor.
 func (m *customMotor) SetRPM(ctx context.Context, rpm float64, extra map[string]interface{}) error {
-	panic("unimplemented")
+	return fmt.Errorf("SetRPM not yet implemeented")
 }
 
 // Stop implements motor.Motor.
