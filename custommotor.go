@@ -135,7 +135,7 @@ type customMotor struct {
 
 // GoTo implements motor.Motor.
 func (m *customMotor) GoTo(ctx context.Context, rpm float64, positionRevolutions float64, extra map[string]interface{}) error {
-	panic("unimplemented")
+	return fmt.Errorf("GoTo not yet implemented")
 }
 
 // GoFor implements motor.Motor.
