@@ -128,8 +128,9 @@ type customMotor struct {
 	argumentOne int
 	argumentTwo string
 
-	b  board.Board
-	ws winchState
+	b        board.Board
+	ws       winchState
+	powerPct float64
 }
 
 // GoTo implements motor.Motor.
@@ -144,12 +145,17 @@ func (m *customMotor) GoFor(ctx context.Context, rpm float64, revolutions float6
 
 // IsMoving implements motor.Motor.
 func (m *customMotor) IsMoving(context.Context) (bool, error) {
-	panic("unimplemented")
+	return m.ws != stoppedWinchState, nil
 }
 
 // IsPowered implements motor.Motor.
 func (m *customMotor) IsPowered(ctx context.Context, extra map[string]interface{}) (bool, float64, error) {
-	panic("unimplemented")
+	isPowered := m.ws != stoppedWinchState
+	powerPct := 0.0
+	if isPowered {
+		powerPct = m.powerPct
+	}
+	return isPowered, powerPct, nil
 }
 
 // Position implements motor.Motor.
@@ -240,7 +246,9 @@ func (m *customMotor) SetPower(ctx context.Context, powerPct float64, extra map[
 		pin = winchCwPin
 		m.ws = lowerWinchState
 	}
-	m.setPwmDutyCycle(pin, math.Abs(powerPct))
+	newPowerPct := math.Abs(powerPct)
+	m.setPwmDutyCycle(pin, newPowerPct)
+	m.powerPct = newPowerPct
 	return nil
 }
 
