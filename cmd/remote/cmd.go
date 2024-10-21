@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"os"
-	"strconv"
 
 	"go.viam.com/rdk/module"
 	// TODO: update to the interface you'll implement
@@ -36,8 +35,6 @@ func mainWithArgs(ctx context.Context, args []string, logger logging.Logger) (er
 		return err
 	}
 
-	arg_2_converted, _ := strconv.Atoi(os.Args[2])
-
 	// Update the Attributes and ConvertedAttributes with the attributes your modular resource should receive
 	conf := &config.Config{
 		Network: netconfig,
@@ -47,14 +44,10 @@ func mainWithArgs(ctx context.Context, args []string, logger logging.Logger) (er
 				API:   motor.API,
 				Model: winchmotor.Model,
 				Attributes: rdkutils.AttributeMap{
-					"one":   arg_2_converted,
-					"two":   os.Args[3],
-					"board": os.Args[4],
+					"board": os.Args[2],
 				},
 				ConvertedAttributes: &winchmotor.Config{
-					ArgumentOne: arg_2_converted,
-					ArgumentTwo: os.Args[3],
-					Board:       os.Args[4],
+					Board: os.Args[2],
 				},
 			},
 		},

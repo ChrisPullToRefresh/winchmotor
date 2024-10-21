@@ -58,21 +58,12 @@ func init() {
 // TODO: Change the Config struct to contain any values that you would like to be able to configure from the attributes field in the component
 // configuration. For more information see https://docs.viam.com/build/configure/#components
 type Config struct {
-	ArgumentOne int    `json:"one"`
-	ArgumentTwo string `json:"two"`
-	Board       string `json:"board"`
+	Board string `json:"board"`
 }
 
 // Validate validates the config and returns implicit dependencies.
 // TODO: Change the Validate function to validate any config variables.
 func (cfg *Config) Validate(path string) ([]string, error) {
-	if cfg.ArgumentOne == 0 {
-		return nil, utils.NewConfigValidationFieldRequiredError(path, "one")
-	}
-
-	if cfg.ArgumentTwo == "" {
-		return nil, utils.NewConfigValidationFieldRequiredError(path, "two")
-	}
 
 	if cfg.Board == "" {
 		return nil, utils.NewConfigValidationFieldRequiredError(path, "board")
@@ -130,9 +121,6 @@ type customMotor struct {
 	cancelFunc func()
 	mu         sync.Mutex
 	opMgr      *operation.SingleOperationManager
-
-	argumentOne int
-	argumentTwo string
 
 	b        board.Board
 	ws       winchState
@@ -325,17 +313,13 @@ func (m *customMotor) Reconfigure(ctx context.Context, deps resource.Dependencie
 		return err
 	}
 
-	m.argumentOne = motorConfig.ArgumentOne
-	m.argumentTwo = motorConfig.ArgumentTwo
-
 	m.name = conf.ResourceName()
-	m.logger.Info("one is now configured to: ", m.argumentOne)
-	m.logger.Info("two is now configured to ", m.argumentTwo)
 
 	m.b, err = board.FromDependencies(deps, motorConfig.Board)
 	if err != nil {
 		return fmt.Errorf("unable to get motor %v for %v", motorConfig.Board, m.name)
 	}
+	m.logger.Info("board is now configured to ", m.b.Name())
 
 	return nil
 }
