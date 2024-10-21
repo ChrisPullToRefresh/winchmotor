@@ -8,11 +8,14 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"sync"
+	"time"
 
 	// TODO: update to the interface you'll implement
 	"go.viam.com/rdk/components/board"
 	"go.viam.com/rdk/components/motor"
 	"go.viam.com/rdk/logging"
+	"go.viam.com/rdk/operation"
 	"go.viam.com/rdk/resource"
 
 	"go.viam.com/utils"
@@ -99,6 +102,7 @@ func newCustomMotor(ctx context.Context, deps resource.Dependencies, rawConf res
 		cfg:        conf,
 		cancelCtx:  cancelCtx,
 		cancelFunc: cancelFunc,
+		opMgr:      operation.NewSingleOperationManager(),
 	}
 
 	// TODO: If your custom component has dependencies, perform any checks you need to on them.
@@ -124,6 +128,8 @@ type customMotor struct {
 
 	cancelCtx  context.Context
 	cancelFunc func()
+	mu         sync.Mutex
+	opMgr      *operation.SingleOperationManager
 
 	argumentOne int
 	argumentTwo string
@@ -213,6 +219,9 @@ func (m *customMotor) setPwmDutyCycle(pinName string, dutyCyclePct float64) {
 }
 
 func (m *customMotor) resetWinch() {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
 	m.setPin(winchCwPin, false)
 	m.setPin(winchCcwPin, false)
 
@@ -221,6 +230,9 @@ func (m *customMotor) resetWinch() {
 }
 
 func (m *customMotor) stopWinch() {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
 	m.setPwmDutyCycle(winchCwPin, winchStopPwmDutyCycle)
 	m.setPwmDutyCycle(winchCcwPin, winchStopPwmDutyCycle)
 
@@ -235,21 +247,49 @@ func iotaEqual(x, y float64) bool {
 // SetPower implements motor.Motor.
 // powerPct > 0 == raise == cw
 func (m *customMotor) SetPower(ctx context.Context, powerPct float64, extra map[string]interface{}) error {
+	m.opMgr.CancelRunning(ctx)
+
 	if iotaEqual(powerPct, 0.0) {
 		return m.Stop(ctx, nil)
 	}
-	var pin string
-	if powerPct > 0 {
-		pin = winchCwPin
-		m.ws = raiseWinchState
-	} else {
-		pin = winchCcwPin
-		m.ws = lowerWinchState
+
+	{
+		m.mu.Lock()
+		defer m.mu.Unlock()
+		var pin string
+		if powerPct > 0 {
+			pin = winchCwPin
+			m.ws = raiseWinchState
+		} else {
+			pin = winchCcwPin
+			m.ws = lowerWinchState
+		}
+		newPowerPct := math.Abs(powerPct)
+		m.setPwmDutyCycle(pin, newPowerPct)
+		m.powerPct = newPowerPct
 	}
-	newPowerPct := math.Abs(powerPct)
-	m.setPwmDutyCycle(pin, newPowerPct)
-	m.powerPct = newPowerPct
-	return nil
+
+	// If winch is being raised, continually check if
+	// load cell value is too high
+	if m.ws == raiseWinchState {
+		ctx, done := m.opMgr.New(ctx)
+		defer done()
+		return m.raiseWinchCarefully(ctx)
+	} else {
+		return nil
+	}
+}
+
+// All callers must register an operation via `m.opMgr.New`
+func (m *customMotor) raiseWinchCarefully(ctx context.Context) error {
+	for {
+		select {
+		case <-ctx.Done():
+			return nil
+		default:
+			time.Sleep(time.Millisecond * 5)
+		}
+	}
 }
 
 // SetRPM implements motor.Motor.
@@ -258,7 +298,9 @@ func (m *customMotor) SetRPM(ctx context.Context, rpm float64, extra map[string]
 }
 
 // Stop implements motor.Motor.
-func (m *customMotor) Stop(context.Context, map[string]interface{}) error {
+func (m *customMotor) Stop(ctx context.Context, extra map[string]interface{}) error {
+	m.opMgr.CancelRunning(ctx)
+
 	m.stopWinch()
 	return nil
 }
@@ -271,6 +313,11 @@ func (m *customMotor) Name() resource.Name {
 // Reconfigures the model. Most models can be reconfigured in place without needing to rebuild. If you need to instead create a new instance of the sensor, throw a NewMustBuildError.
 // TODO: rename as appropriate, i.e. m *customMotor
 func (m *customMotor) Reconfigure(ctx context.Context, deps resource.Dependencies, conf resource.Config) error {
+	m.opMgr.CancelRunning(ctx)
+
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
 	// TODO: rename as appropriate (i.e., motorConfig)
 	motorConfig, err := resource.NativeConfig[*Config](conf)
 	if err != nil {
@@ -303,6 +350,7 @@ func (m *customMotor) DoCommand(ctx context.Context, cmd map[string]interface{})
 // Close closes the underlying generic.
 // TODO: rename as appropriate (i.e., motorConfig)
 func (m *customMotor) Close(ctx context.Context) error {
+	err := m.Stop(ctx, nil)
 	m.cancelFunc()
-	return nil
+	return err
 }
