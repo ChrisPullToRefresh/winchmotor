@@ -262,6 +262,7 @@ func (m *customMotor) SetPower(ctx context.Context, powerPct float64, extra map[
 			pin = winchCwPin
 			m.ws = raiseWinchState
 		} else {
+			m.emergencyStop = false
 			pin = winchCcwPin
 			m.ws = lowerWinchState
 		}
@@ -289,8 +290,15 @@ func (m *customMotor) raiseWinchCarefully(ctx context.Context) error {
 			m.logger.Error("error reading sensor data ", err)
 			return err
 		}
-		for key, value := range readings {
-			m.logger.Info("%q = %T", key, value)
+		// entries in map: mass_kg, raw
+		raw, ok := readings["raw"].(int)
+		if !ok {
+			m.logger.Errorf("raw is not an int, it's a %T", raw)
+		}
+		if raw > maxAllowableRawForLoadCell {
+			m.emergencyStop = true
+			m.Stop(ctx, nil)
+			return fmt.Errorf("emergency stop winch with a load cell reading of %v", raw)
 		}
 
 		select {
