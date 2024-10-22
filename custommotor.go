@@ -14,6 +14,7 @@ import (
 	// TODO: update to the interface you'll implement
 	"go.viam.com/rdk/components/board"
 	"go.viam.com/rdk/components/motor"
+	"go.viam.com/rdk/components/sensor"
 	"go.viam.com/rdk/logging"
 	"go.viam.com/rdk/operation"
 	"go.viam.com/rdk/resource"
@@ -58,7 +59,8 @@ func init() {
 // TODO: Change the Config struct to contain any values that you would like to be able to configure from the attributes field in the component
 // configuration. For more information see https://docs.viam.com/build/configure/#components
 type Config struct {
-	Board string `json:"board"`
+	Board          string `json:"board"`
+	SensorLoadCell string `json:"sensor-load-cell"`
 }
 
 // Validate validates the config and returns implicit dependencies.
@@ -67,6 +69,10 @@ func (cfg *Config) Validate(path string) ([]string, error) {
 
 	if cfg.Board == "" {
 		return nil, utils.NewConfigValidationFieldRequiredError(path, "board")
+	}
+
+	if cfg.SensorLoadCell == "" {
+		return nil, utils.NewConfigValidationFieldRequiredError(path, "sensor-load-cell")
 	}
 
 	// TODO: return implicit dependencies if needed as the first value
@@ -122,9 +128,11 @@ type customMotor struct {
 	mu         sync.Mutex
 	opMgr      *operation.SingleOperationManager
 
-	b        board.Board
-	ws       winchState
-	powerPct float64
+	b             board.Board
+	lc            resource.Sensor
+	ws            winchState
+	emergencyStop bool
+	powerPct      float64
 }
 
 // GoTo implements motor.Motor.
@@ -320,6 +328,12 @@ func (m *customMotor) Reconfigure(ctx context.Context, deps resource.Dependencie
 		return fmt.Errorf("unable to get motor %v for %v", motorConfig.Board, m.name)
 	}
 	m.logger.Info("board is now configured to ", m.b.Name())
+
+	m.lc, err = sensor.FromDependencies(deps, motorConfig.SensorLoadCell)
+	if err != nil {
+		return fmt.Errorf("unable to get load cell sensor %v for %v", motorConfig.SensorLoadCell, m.name)
+	}
+	m.logger.Info("load cell sensor is now configured")
 
 	return nil
 }

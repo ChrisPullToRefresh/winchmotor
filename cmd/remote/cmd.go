@@ -44,10 +44,12 @@ func mainWithArgs(ctx context.Context, args []string, logger logging.Logger) (er
 				API:   motor.API,
 				Model: winchmotor.Model,
 				Attributes: rdkutils.AttributeMap{
-					"board": os.Args[2],
+					"board":            os.Args[2],
+					"sensor-load-cell": os.Args[3],
 				},
 				ConvertedAttributes: &winchmotor.Config{
-					Board: os.Args[2],
+					Board:          os.Args[2],
+					SensorLoadCell: os.Args[3],
 				},
 			},
 		},
