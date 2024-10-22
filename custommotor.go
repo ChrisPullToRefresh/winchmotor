@@ -37,6 +37,8 @@ const (
 	winchStopPwmDutyCycle = 0
 	winchSlowPwmDutyCycle = 0.2
 	winchFastPwmDutyCycle = 1.0
+
+	maxAllowableRawForLoadCell = 15000
 )
 
 type winchState string
@@ -254,6 +256,9 @@ func (m *customMotor) SetPower(ctx context.Context, powerPct float64, extra map[
 		defer m.mu.Unlock()
 		var pin string
 		if powerPct > 0 {
+			if m.emergencyStop {
+				return fmt.Errorf("can't raise the winch because it's in a state of emergency stop")
+			}
 			pin = winchCwPin
 			m.ws = raiseWinchState
 		} else {
@@ -279,6 +284,15 @@ func (m *customMotor) SetPower(ctx context.Context, powerPct float64, extra map[
 // All callers must register an operation via `m.opMgr.New`
 func (m *customMotor) raiseWinchCarefully(ctx context.Context) error {
 	for {
+		readings, err := m.lc.Readings(ctx, nil)
+		if err != nil {
+			m.logger.Error("error reading sensor data ", err)
+			return err
+		}
+		for key, value := range readings {
+			m.logger.Info("%q = %T", key, value)
+		}
+
 		select {
 		case <-ctx.Done():
 			return nil
