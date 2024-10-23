@@ -294,8 +294,8 @@ func (m *customMotor) SetPower(ctx context.Context, powerPct float64, extra map[
 		//ctx, done := m.opMgr.New(ctx)
 		//defer done()
 		m.logger.Infof("Creating context with cancel for m.raiseWinchCarefully")
-		ctx, _ := context.WithCancel(ctx)
-		//m.raisingContextCancel = cancel
+		ctx, cancel := context.WithCancel(context.Background())
+		m.raisingContextCancel = cancel
 		go m.raiseWinchCarefully(ctx)
 
 	}
