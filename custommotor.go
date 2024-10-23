@@ -16,7 +16,6 @@ import (
 	"go.viam.com/rdk/components/motor"
 	"go.viam.com/rdk/components/sensor"
 	"go.viam.com/rdk/logging"
-	"go.viam.com/rdk/operation"
 	"go.viam.com/rdk/resource"
 
 	"go.viam.com/utils"
@@ -92,7 +91,7 @@ func newCustomMotor(ctx context.Context, deps resource.Dependencies, rawConf res
 		return nil, err
 	}
 
-	// Create a cancelable context for custom sensor
+	// Create a cancelable context for custom motor
 	cancelCtx, cancelFunc := context.WithCancel(context.Background())
 
 	m := &customMotor{
@@ -101,7 +100,7 @@ func newCustomMotor(ctx context.Context, deps resource.Dependencies, rawConf res
 		cfg:        conf,
 		cancelCtx:  cancelCtx,
 		cancelFunc: cancelFunc,
-		opMgr:      operation.NewSingleOperationManager(),
+		//opMgr:      operation.NewSingleOperationManager(),
 	}
 
 	// TODO: If your custom component has dependencies, perform any checks you need to on them.
@@ -128,7 +127,8 @@ type customMotor struct {
 	cancelCtx  context.Context
 	cancelFunc func()
 	mu         sync.Mutex
-	opMgr      *operation.SingleOperationManager
+	// opMgr      *operation.SingleOperationManager
+	raisingContextCancel func()
 
 	b             board.Board
 	lc            resource.Sensor
@@ -227,9 +227,20 @@ func (m *customMotor) resetWinch() {
 	m.setPwmFrequency(winchCcwPin, winchPwmFrequency)
 }
 
+// Must only be used when holding mutex
+// Must be called by Stop, Reconfigure and SetPower
+func (m *customMotor) cancelRaise() {
+	if m.raisingContextCancel != nil {
+		m.raisingContextCancel()
+		m.raisingContextCancel = nil
+	}
+}
+
 func (m *customMotor) stopWinch() {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+
+	m.cancelRaise()
 
 	m.setPwmDutyCycle(winchCwPin, winchStopPwmDutyCycle)
 	m.setPwmDutyCycle(winchCcwPin, winchStopPwmDutyCycle)
@@ -245,41 +256,44 @@ func iotaEqual(x, y float64) bool {
 // SetPower implements motor.Motor.
 // powerPct > 0 == raise == cw
 func (m *customMotor) SetPower(ctx context.Context, powerPct float64, extra map[string]interface{}) error {
-	m.opMgr.CancelRunning(ctx)
+	//m.opMgr.CancelRunning(ctx)
 
 	if iotaEqual(powerPct, 0.0) {
 		return m.Stop(ctx, nil)
 	}
 
-	{
-		m.mu.Lock()
-		defer m.mu.Unlock()
-		var pin string
-		if powerPct > 0 {
-			if m.emergencyStop {
-				return fmt.Errorf("can't raise the winch because it's in a state of emergency stop")
-			}
-			pin = winchCwPin
-			m.ws = raiseWinchState
-		} else {
-			m.emergencyStop = false
-			pin = winchCcwPin
-			m.ws = lowerWinchState
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	m.cancelRaise()
+
+	var pin string
+	if powerPct > 0 {
+		if m.emergencyStop {
+			return fmt.Errorf("can't raise the winch because it's in a state of emergency stop")
 		}
-		newPowerPct := math.Abs(powerPct)
-		m.setPwmDutyCycle(pin, newPowerPct)
-		m.powerPct = newPowerPct
+		pin = winchCwPin
+		m.ws = raiseWinchState
+	} else {
+		m.emergencyStop = false
+		pin = winchCcwPin
+		m.ws = lowerWinchState
 	}
+	newPowerPct := math.Abs(powerPct)
+	m.setPwmDutyCycle(pin, newPowerPct)
+	m.powerPct = newPowerPct
 
 	// If winch is being raised, continually check if
 	// load cell value is too high
 	if m.ws == raiseWinchState {
-		ctx, done := m.opMgr.New(ctx)
-		defer done()
-		return m.raiseWinchCarefully(ctx)
-	} else {
-		return nil
+		//ctx, done := m.opMgr.New(ctx)
+		//defer done()
+		ctx, cancel := context.WithCancel(ctx)
+		m.raisingContextCancel = cancel
+		go m.raiseWinchCarefully(ctx)
+
 	}
+	return nil
 }
 
 // 10/22/2024, 5:28:03 PM error rdk.winchmotor.rdk:component:motor/winchmotor-local-1 winchmotor/custommotor.go:290 error reading sensor data rpc error: code = Canceled desc = context canceled log_ts UTC
@@ -308,7 +322,7 @@ func (m *customMotor) raiseWinchCarefully(ctx context.Context) error {
 				return fmt.Errorf("emergency stop winch with a load cell reading of %v", raw)
 			}
 
-			time.Sleep(time.Millisecond * 5)
+			time.Sleep(time.Millisecond * 50)
 		}
 	}
 }
@@ -320,7 +334,6 @@ func (m *customMotor) SetRPM(ctx context.Context, rpm float64, extra map[string]
 
 // Stop implements motor.Motor.
 func (m *customMotor) Stop(ctx context.Context, extra map[string]interface{}) error {
-	m.opMgr.CancelRunning(ctx)
 
 	m.stopWinch()
 	return nil
@@ -334,10 +347,12 @@ func (m *customMotor) Name() resource.Name {
 // Reconfigures the model. Most models can be reconfigured in place without needing to rebuild. If you need to instead create a new instance of the sensor, throw a NewMustBuildError.
 // TODO: rename as appropriate, i.e. m *customMotor
 func (m *customMotor) Reconfigure(ctx context.Context, deps resource.Dependencies, conf resource.Config) error {
-	m.opMgr.CancelRunning(ctx)
+	//m.opMgr.CancelRunning(ctx)
 
 	m.mu.Lock()
 	defer m.mu.Unlock()
+
+	m.cancelRaise()
 
 	// TODO: rename as appropriate (i.e., motorConfig)
 	motorConfig, err := resource.NativeConfig[*Config](conf)
