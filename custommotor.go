@@ -294,8 +294,8 @@ func (m *customMotor) SetPower(ctx context.Context, powerPct float64, extra map[
 		//ctx, done := m.opMgr.New(ctx)
 		//defer done()
 		m.logger.Infof("Creating context with cancel for m.raiseWinchCarefully")
-		ctx, cancel := context.WithCancel(ctx)
-		m.raisingContextCancel = cancel
+		ctx, _ := context.WithCancel(ctx)
+		//m.raisingContextCancel = cancel
 		go m.raiseWinchCarefully(ctx)
 
 	}
@@ -307,7 +307,10 @@ func (m *customMotor) SetPower(ctx context.Context, powerPct float64, extra map[
 // All callers must register an operation via `m.opMgr.New`
 func (m *customMotor) raiseWinchCarefully(ctx context.Context) error {
 	m.logger.Infof("Inside of raiseWinchCarefully")
+	loopIteration := 1
 	for {
+		m.logger.Infof("Loop iteration %v", loopIteration)
+		loopIteration += 1
 		select {
 		case <-ctx.Done():
 			m.logger.Infof("ctx.Done() so returning nil from raiseWinchCarefully()")
