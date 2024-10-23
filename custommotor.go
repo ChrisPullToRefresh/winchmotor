@@ -316,7 +316,9 @@ func (m *customMotor) raiseWinchCarefully(ctx context.Context) error {
 				return fmt.Errorf("cannot read \"raw\" from load cell sensor")
 			}
 			rawFloat64 := raw.(float64)
+			m.logger.Infof("Sensor cell reading in raiseWinchCarefully = %v", rawFloat64)
 			if rawFloat64 > maxAllowableRawForLoadCell {
+				m.logger.Errorf("Emergency stop winch")
 				m.emergencyStop = true
 				m.Stop(ctx, nil)
 				return fmt.Errorf("emergency stop winch with a load cell reading of %v", raw)
