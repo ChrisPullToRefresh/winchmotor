@@ -257,6 +257,7 @@ func iotaEqual(x, y float64) bool {
 // powerPct > 0 == raise == cw
 func (m *customMotor) SetPower(ctx context.Context, powerPct float64, extra map[string]interface{}) error {
 	//m.opMgr.CancelRunning(ctx)
+	m.logger.Infof("Setting power!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
 
 	if iotaEqual(powerPct, 0.0) {
 		return m.Stop(ctx, nil)
