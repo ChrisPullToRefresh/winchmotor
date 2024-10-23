@@ -38,6 +38,9 @@ const (
 	winchFastPwmDutyCycle = 1.0
 
 	maxAllowableRawForLoadCell float64 = 15000.0
+	// milliseconds to wait between polling load cell
+	// when raising the winch
+	winchPollingSleepTimeMs = 10
 )
 
 type winchState string
@@ -256,17 +259,16 @@ func iotaEqual(x, y float64) bool {
 // SetPower implements motor.Motor.
 // powerPct > 0 == raise == cw
 func (m *customMotor) SetPower(ctx context.Context, powerPct float64, extra map[string]interface{}) error {
-	//m.opMgr.CancelRunning(ctx)
-	m.logger.Infof("Setting power")
+	//m.logger.Infof("Setting power")
 
 	if iotaEqual(powerPct, 0.0) {
 		return m.Stop(ctx, nil)
 	}
 
 	m.mu.Lock()
-	defer m.logger.Infof("Locking mutex")
+	//defer m.logger.Infof("Locking mutex")
 	defer m.mu.Unlock()
-	defer m.logger.Infof("Releasing mutex")
+	//defer m.logger.Infof("Releasing mutex")
 
 	m.cancelRaise()
 
@@ -276,7 +278,7 @@ func (m *customMotor) SetPower(ctx context.Context, powerPct float64, extra map[
 			m.logger.Errorf("can't raise the winch because it's in a state of emergency stop")
 			return fmt.Errorf("can't raise the winch because it's in a state of emergency stop")
 		}
-		m.logger.Infof("Raising winch - setting pins")
+		//m.logger.Infof("Raising winch - setting pins")
 		pin = winchCwPin
 		m.ws = raiseWinchState
 	} else {
@@ -293,7 +295,7 @@ func (m *customMotor) SetPower(ctx context.Context, powerPct float64, extra map[
 	if m.ws == raiseWinchState {
 		//ctx, done := m.opMgr.New(ctx)
 		//defer done()
-		m.logger.Infof("Creating context with cancel for m.raiseWinchCarefully")
+		//m.logger.Infof("Creating context with cancel for m.raiseWinchCarefully")
 		ctx, cancel := context.WithCancel(context.Background())
 		m.raisingContextCancel = cancel
 		go m.raiseWinchCarefully(ctx)
@@ -302,21 +304,20 @@ func (m *customMotor) SetPower(ctx context.Context, powerPct float64, extra map[
 	return nil
 }
 
-// 10/22/2024, 5:28:03 PM error rdk.winchmotor.rdk:component:motor/winchmotor-local-1 winchmotor/custommotor.go:290 error reading sensor data rpc error: code = Canceled desc = context canceled log_ts UTC
-// 10/22/2024, 5:28:03 PM error rdk.winchmotor.rdk:component:motor/winchmotor-local-1 winchmotor/custommotor.go:296 raw is not an int, it's a int log_ts UTC
-// All callers must register an operation via `m.opMgr.New`
+// All callers must register a new context - should be called as a
+// go routine
 func (m *customMotor) raiseWinchCarefully(ctx context.Context) error {
-	m.logger.Infof("Inside of raiseWinchCarefully")
-	loopIteration := 1
+	//m.logger.Infof("Inside of raiseWinchCarefully")
+	//loopIteration := 1
 	for {
-		m.logger.Infof("Loop iteration %v", loopIteration)
-		loopIteration += 1
+		//m.logger.Infof("Loop iteration %v", loopIteration)
+		//loopIteration += 1
 		select {
 		case <-ctx.Done():
 			m.logger.Infof("ctx.Done() so returning nil from raiseWinchCarefully()")
 			return nil
 		default:
-			m.logger.Infof("Reading load cell data inside raiseWinchCarefully()")
+			//m.logger.Infof("Reading load cell data inside raiseWinchCarefully()")
 			readings, err := m.lc.Readings(ctx, nil)
 			if err != nil {
 				m.logger.Errorf("error reading sensor data: %v", err)
@@ -328,15 +329,14 @@ func (m *customMotor) raiseWinchCarefully(ctx context.Context) error {
 				return fmt.Errorf("cannot read \"raw\" from load cell sensor")
 			}
 			rawFloat64 := raw.(float64)
-			m.logger.Infof("Sensor cell reading in raiseWinchCarefully = %v", rawFloat64)
+			//m.logger.Infof("Sensor cell reading in raiseWinchCarefully = %v", rawFloat64)
 			if rawFloat64 > maxAllowableRawForLoadCell {
-				m.logger.Errorf("Emergency stop winch")
+				m.logger.Errorf("emergency stop winch with a load cell reading of %v", raw)
 				m.emergencyStop = true
 				m.Stop(ctx, nil)
 				return fmt.Errorf("emergency stop winch with a load cell reading of %v", raw)
 			}
-
-			time.Sleep(time.Millisecond * 100)
+			time.Sleep(time.Millisecond * winchPollingSleepTimeMs)
 		}
 	}
 }
