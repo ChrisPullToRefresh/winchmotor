@@ -282,29 +282,32 @@ func (m *customMotor) SetPower(ctx context.Context, powerPct float64, extra map[
 	}
 }
 
+// 10/22/2024, 5:28:03 PM error rdk.winchmotor.rdk:component:motor/winchmotor-local-1 winchmotor/custommotor.go:290 error reading sensor data rpc error: code = Canceled desc = context canceled log_ts UTC
+// 10/22/2024, 5:28:03 PM error rdk.winchmotor.rdk:component:motor/winchmotor-local-1 winchmotor/custommotor.go:296 raw is not an int, it's a int log_ts UTC
 // All callers must register an operation via `m.opMgr.New`
 func (m *customMotor) raiseWinchCarefully(ctx context.Context) error {
 	for {
-		readings, err := m.lc.Readings(ctx, nil)
-		if err != nil {
-			m.logger.Error("error reading sensor data ", err)
-			return err
-		}
-		// entries in map: mass_kg, raw
-		raw, ok := readings["raw"].(int)
-		if !ok {
-			m.logger.Errorf("raw is not an int, it's a %T", raw)
-		}
-		if raw > maxAllowableRawForLoadCell {
-			m.emergencyStop = true
-			m.Stop(ctx, nil)
-			return fmt.Errorf("emergency stop winch with a load cell reading of %v", raw)
-		}
-
 		select {
 		case <-ctx.Done():
 			return nil
 		default:
+			readings, err := m.lc.Readings(ctx, nil)
+			if err != nil {
+				m.logger.Error("error reading sensor data ", err)
+				return err
+			}
+			// entries in map: mass_kg, raw
+			raw, ok := (readings["raw"])
+			if !ok {
+				return fmt.Errorf("cannot read \"raw\" from load cell sensor")
+			}
+			rawInt := raw.(int)
+			if rawInt > maxAllowableRawForLoadCell {
+				m.emergencyStop = true
+				m.Stop(ctx, nil)
+				return fmt.Errorf("emergency stop winch with a load cell reading of %v", raw)
+			}
+
 			time.Sleep(time.Millisecond * 5)
 		}
 	}
