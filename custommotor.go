@@ -257,22 +257,26 @@ func iotaEqual(x, y float64) bool {
 // powerPct > 0 == raise == cw
 func (m *customMotor) SetPower(ctx context.Context, powerPct float64, extra map[string]interface{}) error {
 	//m.opMgr.CancelRunning(ctx)
-	m.logger.Infof("Setting power!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+	m.logger.Infof("Setting power")
 
 	if iotaEqual(powerPct, 0.0) {
 		return m.Stop(ctx, nil)
 	}
 
 	m.mu.Lock()
+	defer m.logger.Infof("Locking mutex")
 	defer m.mu.Unlock()
+	defer m.logger.Infof("Releasing mutex")
 
 	m.cancelRaise()
 
 	var pin string
 	if powerPct > 0 {
 		if m.emergencyStop {
+			m.logger.Errorf("can't raise the winch because it's in a state of emergency stop")
 			return fmt.Errorf("can't raise the winch because it's in a state of emergency stop")
 		}
+		m.logger.Infof("Raising winch - setting pins")
 		pin = winchCwPin
 		m.ws = raiseWinchState
 	} else {
@@ -289,6 +293,7 @@ func (m *customMotor) SetPower(ctx context.Context, powerPct float64, extra map[
 	if m.ws == raiseWinchState {
 		//ctx, done := m.opMgr.New(ctx)
 		//defer done()
+		m.logger.Infof("Creating context with cancel for m.raiseWinchCarefully")
 		ctx, cancel := context.WithCancel(ctx)
 		m.raisingContextCancel = cancel
 		go m.raiseWinchCarefully(ctx)
@@ -301,14 +306,17 @@ func (m *customMotor) SetPower(ctx context.Context, powerPct float64, extra map[
 // 10/22/2024, 5:28:03 PM error rdk.winchmotor.rdk:component:motor/winchmotor-local-1 winchmotor/custommotor.go:296 raw is not an int, it's a int log_ts UTC
 // All callers must register an operation via `m.opMgr.New`
 func (m *customMotor) raiseWinchCarefully(ctx context.Context) error {
+	m.logger.Infof("Inside of raiseWinchCarefully")
 	for {
 		select {
 		case <-ctx.Done():
+			m.logger.Infof("ctx.Done() so returning nil from raiseWinchCarefully()")
 			return nil
 		default:
+			m.logger.Infof("Reading load cell data inside raiseWinchCarefully()")
 			readings, err := m.lc.Readings(ctx, nil)
 			if err != nil {
-				m.logger.Error("error reading sensor data ", err)
+				m.logger.Errorf("error reading sensor data: %v", err)
 				return err
 			}
 			// entries in map: mass_kg, raw
@@ -325,7 +333,7 @@ func (m *customMotor) raiseWinchCarefully(ctx context.Context) error {
 				return fmt.Errorf("emergency stop winch with a load cell reading of %v", raw)
 			}
 
-			time.Sleep(time.Millisecond * 50)
+			time.Sleep(time.Millisecond * 100)
 		}
 	}
 }
