@@ -38,7 +38,7 @@ const (
 	winchSlowPwmDutyCycle = 0.2
 	winchFastPwmDutyCycle = 1.0
 
-	maxAllowableRawForLoadCell = 15000
+	maxAllowableRawForLoadCell float64 = 15000.0
 )
 
 type winchState string
@@ -301,8 +301,8 @@ func (m *customMotor) raiseWinchCarefully(ctx context.Context) error {
 			if !ok {
 				return fmt.Errorf("cannot read \"raw\" from load cell sensor")
 			}
-			rawInt := raw.(int)
-			if rawInt > maxAllowableRawForLoadCell {
+			rawFloat64 := raw.(float64)
+			if rawFloat64 > maxAllowableRawForLoadCell {
 				m.emergencyStop = true
 				m.Stop(ctx, nil)
 				return fmt.Errorf("emergency stop winch with a load cell reading of %v", raw)
