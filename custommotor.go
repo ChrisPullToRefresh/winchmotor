@@ -413,7 +413,6 @@ func (m *customMotor) DoCommand(ctx context.Context, cmd map[string]interface{})
 			return nil, fmt.Errorf("unknown DoCommand key = %v ", emergencyStopCmd)
 		}
 	}
-	m.logger.Error("DoCommand method unimplemented")
 	return nil, errUnimplemented
 }
 
