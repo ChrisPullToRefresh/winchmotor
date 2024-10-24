@@ -406,6 +406,7 @@ func (m *customMotor) DoCommand(ctx context.Context, cmd map[string]interface{})
 			if command == "get" {
 				returnMap := make(map[string]interface{})
 				returnMap[emergencyStopCmd] = m.emergencyStop
+				return returnMap, nil
 			} else {
 				return nil, fmt.Errorf("unknown DoCommand value for %v = %v", emergencyStopCmd, command)
 			}
@@ -413,7 +414,7 @@ func (m *customMotor) DoCommand(ctx context.Context, cmd map[string]interface{})
 			return nil, fmt.Errorf("unknown DoCommand key = %v ", emergencyStopCmd)
 		}
 	}
-	return nil, errUnimplemented
+	return nil, fmt.Errorf("unknown DoCommand command map: %v", cmd)
 }
 
 // Close closes the underlying generic.
