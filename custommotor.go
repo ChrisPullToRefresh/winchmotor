@@ -41,6 +41,9 @@ const (
 	// milliseconds to wait between polling load cell
 	// when raising the winch
 	winchPollingSleepTimeMs = 10
+
+	emergencyStopCmd = "emergencyStop"
+	emergencyStopGet = "get"
 )
 
 type winchState string
@@ -395,6 +398,21 @@ func (m *customMotor) Reconfigure(ctx context.Context, deps resource.Dependencie
 // DoCommand is a place to add additional commands to extend the sensor API. This is optional.
 // TODO: rename as appropriate (i.e., motorConfig)
 func (m *customMotor) DoCommand(ctx context.Context, cmd map[string]interface{}) (map[string]interface{}, error) {
+	for key, value := range cmd {
+		switch key {
+		// "emergencyStop":"get"
+		case emergencyStopCmd:
+			command := value.(string)
+			if command == "get" {
+				returnMap := make(map[string]interface{})
+				returnMap[emergencyStopCmd] = m.emergencyStop
+			} else {
+				return nil, fmt.Errorf("unknown DoCommand value for %v = %v", emergencyStopCmd, command)
+			}
+		default:
+			return nil, fmt.Errorf("unknown DoCommand key = %v ", emergencyStopCmd)
+		}
+	}
 	m.logger.Error("DoCommand method unimplemented")
 	return nil, errUnimplemented
 }
