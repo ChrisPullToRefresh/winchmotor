@@ -149,7 +149,7 @@ type customMotor struct {
 	emergencyStop bool
 	powerPct      float64
 
-	winchCount int16
+	winchCount int
 }
 
 // GoTo implements motor.Motor.
@@ -430,7 +430,12 @@ func (m *customMotor) DoCommand(ctx context.Context, cmd map[string]interface{})
 			command := value.(string)
 			if command == getCommandValue {
 				returnMap := make(map[string]interface{})
-				returnMap[winchCountCmd] = m.winchCount
+				positionFloat, _, err := m.encoderWinch.Position(ctx, encoder.PositionTypeTicks, nil)
+				positionInt := int(positionFloat)
+				if err != nil {
+					return nil, err
+				}
+				returnMap[winchCountCmd] = m.winchCount + positionInt
 				return returnMap, nil
 			} else {
 				return nil, fmt.Errorf("unknown DoCommand value for %v = %v", winchCountCmd, command)
