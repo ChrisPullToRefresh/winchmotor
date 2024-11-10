@@ -38,6 +38,8 @@ const (
 	winchSlowPwmDutyCycle = 0.2
 	winchFastPwmDutyCycle = 1.0
 
+	encoderWinchPin = "19"
+
 	maxAllowableRawForLoadCell float64 = 15000.0
 	// milliseconds to wait between polling load cell
 	// when raising the winch
@@ -124,6 +126,7 @@ func newCustomMotor(ctx context.Context, deps resource.Dependencies, rawConf res
 	}
 
 	m.resetWinch()
+	m.resetEncoderWinch()
 	m.ws = stoppedWinchState
 
 	return m, nil
@@ -240,6 +243,13 @@ func (m *customMotor) resetWinch() {
 
 	m.setPwmFrequency(winchCwPin, winchPwmFrequency)
 	m.setPwmFrequency(winchCcwPin, winchPwmFrequency)
+}
+
+func (m *customMotor) resetEncoderWinch() {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	m.setPin(encoderWinchPin, false)
 }
 
 // Must only be used when holding mutex
