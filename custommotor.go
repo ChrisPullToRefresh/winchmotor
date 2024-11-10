@@ -427,7 +427,7 @@ func (m *customMotor) DoCommand(ctx context.Context, cmd map[string]interface{})
 				return nil, fmt.Errorf("unknown DoCommand value for %v = %v", winchCountCmd, command)
 			}
 		default:
-			return nil, fmt.Errorf("unknown DoCommand key = %v ", emergencyStopCmd)
+			return nil, fmt.Errorf("unknown DoCommand key = %v ", key)
 		}
 	}
 	return nil, fmt.Errorf("unknown DoCommand command map: %v", cmd)
