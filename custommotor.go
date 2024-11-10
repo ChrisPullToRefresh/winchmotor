@@ -42,8 +42,12 @@ const (
 	// when raising the winch
 	winchPollingSleepTimeMs = 10
 
+	// DoCommands for:
+	// is there an emergency stop?
 	emergencyStopCmd = "emergencyStop"
-	emergencyStopGet = "get"
+	// what's the winch count?
+	winchCountCmd   = "winchCount"
+	getCommandValue = "get"
 )
 
 type winchState string
@@ -141,6 +145,8 @@ type customMotor struct {
 	ws            winchState
 	emergencyStop bool
 	powerPct      float64
+
+	winchCount int16
 }
 
 // GoTo implements motor.Motor.
@@ -403,12 +409,22 @@ func (m *customMotor) DoCommand(ctx context.Context, cmd map[string]interface{})
 		// "emergencyStop":"get"
 		case emergencyStopCmd:
 			command := value.(string)
-			if command == "get" {
+			if command == getCommandValue {
 				returnMap := make(map[string]interface{})
 				returnMap[emergencyStopCmd] = m.emergencyStop
 				return returnMap, nil
 			} else {
 				return nil, fmt.Errorf("unknown DoCommand value for %v = %v", emergencyStopCmd, command)
+			}
+		// "winchCount":"get"
+		case winchCountCmd:
+			command := value.(string)
+			if command == getCommandValue {
+				returnMap := make(map[string]interface{})
+				returnMap[emergencyStopCmd] = m.winchCount
+				return returnMap, nil
+			} else {
+				return nil, fmt.Errorf("unknown DoCommand value for %v = %v", winchCountCmd, command)
 			}
 		default:
 			return nil, fmt.Errorf("unknown DoCommand key = %v ", emergencyStopCmd)

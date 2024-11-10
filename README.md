@@ -1,11 +1,14 @@
 > [!NOTE]
-> This is a module template. Read the [instructions](./Instructions.md) for a step by step guide on how to create your module.
+> This is created from a module template. Read the [instructions](./Instructions.md) for a step by step guide on how to create your module.
 
 
-# <INSERT NAME> modular resource
+# winchmotor modular resource
 
-This module implements...
-With this model, you can...
+This module implements the **motor** interface.
+
+It requires a counter encoder to function correctly.
+
+On startup, it reads the pin # of the encoder and sets that pin to low.
 
 ## Requirements
 
