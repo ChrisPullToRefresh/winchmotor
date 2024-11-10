@@ -1,4 +1,5 @@
 {
   "board": "board-1",
-  "sensor-load-cell": "sensor-load-cell" 
+  "sensor-load-cell": "sensor-load-cell",
+  "encoder-winch": "encoder-winch",
 }

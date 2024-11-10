@@ -13,6 +13,7 @@ import (
 
 	// TODO: update to the interface you'll implement
 	"go.viam.com/rdk/components/board"
+	"go.viam.com/rdk/components/encoder"
 	"go.viam.com/rdk/components/motor"
 	"go.viam.com/rdk/components/sensor"
 	"go.viam.com/rdk/logging"
@@ -72,6 +73,7 @@ func init() {
 type Config struct {
 	Board          string `json:"board"`
 	SensorLoadCell string `json:"sensor-load-cell"`
+	EncoderWinch   string `json:"encoder-winch"`
 }
 
 // Validate validates the config and returns implicit dependencies.
@@ -142,6 +144,7 @@ type customMotor struct {
 
 	b             board.Board
 	lc            resource.Sensor
+	encoderWinch  encoder.Encoder
 	ws            winchState
 	emergencyStop bool
 	powerPct      float64
@@ -397,6 +400,12 @@ func (m *customMotor) Reconfigure(ctx context.Context, deps resource.Dependencie
 		return fmt.Errorf("unable to get load cell sensor %v for %v", motorConfig.SensorLoadCell, m.name)
 	}
 	m.logger.Info("load cell sensor is now configured")
+
+	m.encoderWinch, err = encoder.FromDependencies(deps, motorConfig.EncoderWinch)
+	if err != nil {
+		return fmt.Errorf("unable to get encoder %v for %v", motorConfig.EncoderWinch, m.name)
+	}
+	m.logger.Info("encoder winch is now configured")
 
 	return nil
 }
