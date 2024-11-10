@@ -421,7 +421,7 @@ func (m *customMotor) DoCommand(ctx context.Context, cmd map[string]interface{})
 			command := value.(string)
 			if command == getCommandValue {
 				returnMap := make(map[string]interface{})
-				returnMap[emergencyStopCmd] = m.winchCount
+				returnMap[winchCountCmd] = m.winchCount
 				return returnMap, nil
 			} else {
 				return nil, fmt.Errorf("unknown DoCommand value for %v = %v", winchCountCmd, command)
