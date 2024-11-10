@@ -355,6 +355,10 @@ func (m *customMotor) raiseWinchCarefully(ctx context.Context) error {
 			if rawFloat64 > maxAllowableRawForLoadCell {
 				m.logger.Errorf("emergency stop winch with a load cell reading of %v", raw)
 				m.emergencyStop = true
+				err := m.encoderWinch.ResetPosition(ctx, nil)
+				if err != nil {
+					m.logger.Errorf("couldn't reset the winch count upon emergency stop")
+				}
 				m.Stop(ctx, nil)
 				return fmt.Errorf("emergency stop winch with a load cell reading of %v", raw)
 			}
