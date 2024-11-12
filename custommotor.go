@@ -32,7 +32,7 @@ var (
 
 const (
 	winchCwPin            = "35" // Raise winch
-	winchCcwPin           = "39" // Lower winch
+	winchCcwPin           = "37" // Lower winch
 	winchPwmFrequency     = 500
 	winchStopPwmDutyCycle = 0
 	winchSlowPwmDutyCycle = 0.2
