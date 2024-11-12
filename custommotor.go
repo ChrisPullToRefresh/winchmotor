@@ -31,8 +31,8 @@ var (
 )
 
 const (
-	winchCwPin            = "35"
-	winchCcwPin           = "37"
+	winchCwPin            = "35" // Raise winch
+	winchCcwPin           = "39" // Lower winch
 	winchPwmFrequency     = 500
 	winchStopPwmDutyCycle = 0
 	winchSlowPwmDutyCycle = 0.2
@@ -157,12 +157,12 @@ type customMotor struct {
 
 // GoTo implements motor.Motor.
 func (m *customMotor) GoTo(ctx context.Context, rpm float64, positionRevolutions float64, extra map[string]interface{}) error {
-	return fmt.Errorf("GoTo not yet implemented")
+	return errUnimplemented
 }
 
 // GoFor implements motor.Motor.
 func (m *customMotor) GoFor(ctx context.Context, rpm float64, revolutions float64, extra map[string]interface{}) error {
-	return fmt.Errorf("GoFor not yet implemented")
+	return errUnimplemented
 }
 
 // IsMoving implements motor.Motor.
@@ -182,7 +182,7 @@ func (m *customMotor) IsPowered(ctx context.Context, extra map[string]interface{
 
 // Position implements motor.Motor.
 func (m *customMotor) Position(ctx context.Context, extra map[string]interface{}) (float64, error) {
-	return 0.0, fmt.Errorf("Position not yet implemented")
+	return 0.0, errUnimplemented
 }
 
 // Properties implements motor.Motor.
@@ -192,7 +192,7 @@ func (m *customMotor) Properties(ctx context.Context, extra map[string]interface
 
 // ResetZeroPosition implements motor.Motor.
 func (m *customMotor) ResetZeroPosition(ctx context.Context, offset float64, extra map[string]interface{}) error {
-	return fmt.Errorf("ResetZeroPosition not yet implemented")
+	return errUnimplemented
 }
 
 func (m *customMotor) setPin(pinName string, high bool) {
