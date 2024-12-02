@@ -47,10 +47,10 @@ const (
 
 	// DoCommands for:
 	// is there an emergency stop?
-	emergencyStopCmd = "emergencyStop"
+	emergencyStopCmd = "EmergencyStop"
 	// what's the winch count?
-	winchCountCmd   = "winchCount"
-	getCommandValue = "get"
+	winchCountCmd   = "WinchCount"
+	getCommandValue = "Get"
 )
 
 type winchState string
@@ -429,7 +429,7 @@ func (m *customMotor) Reconfigure(ctx context.Context, deps resource.Dependencie
 func (m *customMotor) DoCommand(ctx context.Context, cmd map[string]interface{}) (map[string]interface{}, error) {
 	for key, value := range cmd {
 		switch key {
-		// "emergencyStop":"get"
+		// "EmergencyStop":"Get"
 		case emergencyStopCmd:
 			command := value.(string)
 			if command == getCommandValue {
@@ -439,7 +439,7 @@ func (m *customMotor) DoCommand(ctx context.Context, cmd map[string]interface{})
 			} else {
 				return nil, fmt.Errorf("unknown DoCommand value for %v = %v", emergencyStopCmd, command)
 			}
-		// "winchCount":"get"
+		// "WinchCount":"Get"
 		case winchCountCmd:
 			command := value.(string)
 			if command == getCommandValue {
