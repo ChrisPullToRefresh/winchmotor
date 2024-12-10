@@ -15,7 +15,6 @@ import (
 	"go.viam.com/rdk/components/board"
 	"go.viam.com/rdk/components/encoder"
 	"go.viam.com/rdk/components/motor"
-	"go.viam.com/rdk/components/sensor"
 	"go.viam.com/rdk/logging"
 	"go.viam.com/rdk/resource"
 
@@ -38,19 +37,12 @@ const (
 	winchSlowPwmDutyCycle = 0.2
 	winchFastPwmDutyCycle = 1.0
 
-	encoderWinchPin = "19"
+	// encoderWinchPin = "19"
 
 	maxAllowableRawForLoadCell float64 = 15000.0
 	// milliseconds to wait between polling load cell
 	// when raising the winch
 	winchPollingSleepTimeMs = 10
-
-	// DoCommands for:
-	// is there an emergency stop?
-	emergencyStopCmd = "EmergencyStop"
-	// what's the winch count?
-	winchCountCmd   = "WinchCount"
-	getCommandValue = "Get"
 )
 
 type winchState string
@@ -73,9 +65,7 @@ func init() {
 // TODO: Change the Config struct to contain any values that you would like to be able to configure from the attributes field in the component
 // configuration. For more information see https://docs.viam.com/build/configure/#components
 type Config struct {
-	Board          string `json:"board"`
-	SensorLoadCell string `json:"sensor-load-cell"`
-	EncoderWinch   string `json:"encoder-winch"`
+	Board string `json:"board"`
 }
 
 // Validate validates the config and returns implicit dependencies.
@@ -84,10 +74,6 @@ func (cfg *Config) Validate(path string) ([]string, error) {
 
 	if cfg.Board == "" {
 		return nil, utils.NewConfigValidationFieldRequiredError(path, "board")
-	}
-
-	if cfg.SensorLoadCell == "" {
-		return nil, utils.NewConfigValidationFieldRequiredError(path, "sensor-load-cell")
 	}
 
 	// TODO: return implicit dependencies if needed as the first value
@@ -126,7 +112,6 @@ func newCustomMotor(ctx context.Context, deps resource.Dependencies, rawConf res
 	}
 
 	m.resetWinch()
-	m.resetEncoderWinch()
 	m.ws = stoppedWinchState
 
 	return m, nil
@@ -151,8 +136,6 @@ type customMotor struct {
 	ws            winchState
 	emergencyStop bool
 	powerPct      float64
-
-	winchCount int
 }
 
 // GoTo implements motor.Motor.
@@ -243,13 +226,6 @@ func (m *customMotor) resetWinch() {
 
 	m.setPwmFrequency(winchCwPin, winchPwmFrequency)
 	m.setPwmFrequency(winchCcwPin, winchPwmFrequency)
-}
-
-func (m *customMotor) resetEncoderWinch() {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	m.setPin(encoderWinchPin, false)
 }
 
 // Must only be used when holding mutex
@@ -409,56 +385,13 @@ func (m *customMotor) Reconfigure(ctx context.Context, deps resource.Dependencie
 	}
 	m.logger.Info("board is now configured to ", m.b.Name())
 
-	m.lc, err = sensor.FromDependencies(deps, motorConfig.SensorLoadCell)
-	if err != nil {
-		return fmt.Errorf("unable to get load cell sensor %v for %v", motorConfig.SensorLoadCell, m.name)
-	}
-	m.logger.Info("load cell sensor is now configured")
-
-	m.encoderWinch, err = encoder.FromDependencies(deps, motorConfig.EncoderWinch)
-	if err != nil {
-		return fmt.Errorf("unable to get encoder %v for %v", motorConfig.EncoderWinch, m.name)
-	}
-	m.logger.Info("encoder winch is now configured")
-
 	return nil
 }
 
 // DoCommand is a place to add additional commands to extend the sensor API. This is optional.
 // TODO: rename as appropriate (i.e., motorConfig)
 func (m *customMotor) DoCommand(ctx context.Context, cmd map[string]interface{}) (map[string]interface{}, error) {
-	for key, value := range cmd {
-		switch key {
-		// "EmergencyStop":"Get"
-		case emergencyStopCmd:
-			command := value.(string)
-			if command == getCommandValue {
-				returnMap := make(map[string]interface{})
-				returnMap[emergencyStopCmd] = m.emergencyStop
-				return returnMap, nil
-			} else {
-				return nil, fmt.Errorf("unknown DoCommand value for %v = %v", emergencyStopCmd, command)
-			}
-		// "WinchCount":"Get"
-		case winchCountCmd:
-			command := value.(string)
-			if command == getCommandValue {
-				returnMap := make(map[string]interface{})
-				positionFloat, _, err := m.encoderWinch.Position(ctx, encoder.PositionTypeTicks, nil)
-				positionInt := int(positionFloat)
-				if err != nil {
-					return nil, err
-				}
-				returnMap[winchCountCmd] = m.winchCount + positionInt
-				return returnMap, nil
-			} else {
-				return nil, fmt.Errorf("unknown DoCommand value for %v = %v", winchCountCmd, command)
-			}
-		default:
-			return nil, fmt.Errorf("unknown DoCommand key = %v ", key)
-		}
-	}
-	return nil, fmt.Errorf("unknown DoCommand command map: %v", cmd)
+	return nil, fmt.Errorf("DoCommand not yet implemeented")
 }
 
 // Close closes the underlying generic.
